@@ -1,5 +1,5 @@
 import { useState, useEffect  } from 'react'
-import axios from 'axios'
+import { personService } from './services/persons'
 import { Filter } from './Filter'
 import { Persons } from './Persons'
 import { PersonForm } from './PersonForm'
@@ -9,18 +9,40 @@ const App = () => {
   const [persons, setPersons] = useState([]); 
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data);
-      })
+    getListPersons();
   }, [])
 
+  const getListPersons = () => {
+    personService
+      .getAll()
+      .then(response => {
+        setPersons(response.data)
+      })
+  }
+
   const handleAddNewPerson = (person) => {
-    const persons_clone = [...persons];
-    persons_clone.push(person);
-    setPersons(persons_clone);
-    alert(`${person.name} is already added to phonebook`)
+    const find = persons.find(p => p.name === person.name);
+    if (find) {
+      const status = window.confirm(`${person.name} is already added to phonebook, replace the old number with a new one?`);
+      if (status) {
+        personService.update(find.id, person).then(() => {
+          getListPersons();
+        });
+      }
+    } else {
+      personService.create(person).then(response => {
+        const persons_clone = [...persons];
+        persons_clone.push(response.data);
+        setPersons(persons_clone);
+        alert(`${response.data.name} is already added to phonebook`)
+      });
+    }
+  }
+
+  const handleRemovePerson = (person) => {
+    personService.delete(person.id).then(() => {
+      getListPersons();
+    });
   }
 
   return (
@@ -30,7 +52,7 @@ const App = () => {
       <h3>Add a new</h3>
       <PersonForm handleAddNewPerson={(p) => {handleAddNewPerson(p)}} persons={persons} />
       <h3>Numbers</h3>
-      <Persons persons={persons} />
+      <Persons handleRemovePerson={handleRemovePerson} persons={persons} />
     </div>
   )
 }
